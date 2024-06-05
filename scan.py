@@ -70,14 +70,13 @@ class Scan:
 class SingleDirectionScan:
   def __init__(self, worksheet):
     self.worksheet = worksheet
-
-  _values = None
+    self._values = None
   
   @property
   def values(self):
-    if _values == None:
-      _values = self.worksheet.get_all_values()
-    return _values
+    if not self._values:
+      self._values = self.worksheet.get_all_values()
+    return self._values
 
   @property
   def name(self):
