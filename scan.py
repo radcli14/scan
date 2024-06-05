@@ -1,4 +1,5 @@
 import os
+import numpy as np
 import gspread
 from google.colab import auth
 from oauth2client.client import GoogleCredentials
@@ -85,6 +86,7 @@ class SingleDirectionScan:
   def __init__(self, worksheet):
     self.worksheet = worksheet
     self._values = None
+    self._data = None
   
   @property
   def values(self):
@@ -106,11 +108,11 @@ class SingleDirectionScan:
 
   @property
   def forward(self):
-    return self.values[3][1:4]
+    return np.array(self.values[3][1:4])
 
   @property
   def ray(self):
-    return self.values[4][1:4]
+    return np.array(self.values[4][1:4])
 
   @property
   def header(self):
@@ -118,4 +120,14 @@ class SingleDirectionScan:
 
   @property
   def data(self):
-    return self.values[6:]
+    if not self._data:
+      self._data = np.array(self.values[6:])
+    return self._data
+
+  @property
+  def hits(self):
+    return self.data[:, :3]
+
+  @property
+  def normals(self):
+    return self.data[:, 3:]
