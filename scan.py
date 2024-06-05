@@ -68,7 +68,7 @@ class Scan:
 
 
 class SingleDirectionScan:
-  def __init__(self, worksheet)
+  def __init__(self, worksheet):
     self.worksheet = worksheet
 
   _values = None
