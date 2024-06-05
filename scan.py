@@ -29,6 +29,7 @@ class Scan:
     return self.propFromName("Cl")
 
   def propFromName(self, prop):
+    splitName = self.carName.split("_")
     for s in splitName:
       if prop in s:
         return float(s.replace(prop, ""))
