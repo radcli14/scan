@@ -63,23 +63,23 @@ class Scan:
 
   @property
   def back(self):
-    return self.data.worksheet("Back")
+    return SingleDirectionScan(self.data.worksheet("Back"))
 
   @property
   def top(self):
-    return self.data.worksheet("Top")
+    return SingleDirectionScan(self.data.worksheet("Top"))
 
   @property
   def bottom(self):
-    return self.data.worksheet("Bottom")
+    return SingleDirectionScan(self.data.worksheet("Bottom"))
 
   @property
   def left(self):
-    return self.data.worksheet("Left")
+    return SingleDirectionScan(self.data.worksheet("Left"))
 
   @property
   def right(self):
-    return self.data.worksheet("Right")
+    return SingleDirectionScan(self.data.worksheet("Right"))
 
 
 class SingleDirectionScan:
