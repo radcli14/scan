@@ -21,11 +21,11 @@ class Scan:
 
   @property
   def CdFromName(self):
-    return propFromName("Cd")
+    return self.propFromName("Cd")
 
   @property
   def ClFromName(self):
-    return propFromName("Cl")
+    return self.propFromName("Cl")
 
   def propFromName(self, prop):
     for s in splitName:
