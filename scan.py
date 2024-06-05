@@ -20,6 +20,20 @@ class Scan:
     return carName
 
   @property
+  def CdFromName(self):
+    return propFromName("Cd")
+
+  @property
+  def ClFromName(self):
+    return propFromName("Cl")
+
+  def propFromName(self, prop):
+    for s in splitName:
+      if prop in s:
+        return float(s.replace(prop, ""))
+    return None
+  
+  @property
   def scanDirectory(self):
     scanDirectory, _ = os.path.split(self.carDirectory)
     return scanDirectory
