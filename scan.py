@@ -75,7 +75,7 @@ class SingleDirectionScan:
   
   @property
   def values(self):
-    if not _values:
+    if _values == None:
       _values = self.worksheet.get_all_values()
     return _values
 
