@@ -44,7 +44,7 @@ class Scan:
 
   @property
   def front(self):
-    return self.data.worksheet("Front")
+    return SingleDirectionScan(self.data.worksheet("Front"))
 
   @property
   def back(self):
@@ -65,3 +65,44 @@ class Scan:
   @property
   def right(self):
     return self.data.worksheet("Right")
+
+
+class SingleDirectionScan:
+  def __init__(self, worksheet)
+    self.worksheet = worksheet
+
+  _values = None
+  
+  @property
+  def values(self):
+    if not _values:
+      _values = self.worksheet.get_all_values()
+    return _values
+
+  @property
+  def name(self):
+    return self.values[0][0]
+
+  @property
+  def class(self):
+    return self.values[1][0]
+
+  @property
+  def direction(self):
+    return self.values[2][0]
+
+  @property
+  def forward(self):
+    return self.values[3][1:4]
+
+  @property
+  def ray(self):
+    return self.values[4][1:4]
+
+  @property
+  def header(self):
+    return self.values[5]
+
+  @property
+  def data(self):
+    return self.values[6:]
