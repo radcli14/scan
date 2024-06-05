@@ -1,3 +1,12 @@
+import os
+import gspread
+from google.colab import auth
+from oauth2client.client import GoogleCredentials
+from google.auth import default
+auth.authenticate_user()
+creds, _ = default()
+gc = gspread.authorize(creds)
+
 class Scan:
   def __init__(self, fileName=""):
     self.fileName = fileName
