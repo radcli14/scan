@@ -84,7 +84,7 @@ class SingleDirectionScan:
     return self.values[0][0]
 
   @property
-  def class(self):
+  def carClass(self):
     return self.values[1][0]
 
   @property
