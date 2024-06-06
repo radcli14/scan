@@ -84,17 +84,23 @@ class Scan:
     return SingleDirectionScan(self.data.worksheet("Right"))
 
   @property
-  def aeroOldMethod(self):
-    dragweights = [1.334023e+00,	3.789517e-01,	5.690723e-20,	2.949861e+00,	2.949861e+00]
-    liftWeights = {2.283034e-18, 3.149287e-22, 2.154557e+00, 2.500000e+00, 2.500000e+00}
+  def aeroOldMethod(self, 
+                    dragweights=[1.334023e+00,	3.789517e-01,	5.690723e-20, 0.0,	2.949861e+00,	2.949861e+00],
+                    liftWeights=[2.283034e-18, 3.149287e-22, 2.154557e+00, 0.0, 2.500000e+00, 2.500000e+00]):
     projectedArea = self.front.projectedArea
+                     """
     CdAfront, ClAfront = self.front.aeroOldMethod
     CdAback, ClAback = self.back.aeroOldMethod
     CdAtop, ClAtop = self.top.aeroOldMethod
+    CdAbottom, ClAbottom = self.bottom.aeroOldMethod               
     CdAleft, ClAleft = self.left.aeroOldMethod
     CdAright, ClAright = self.right.aeroOldMethod
-    CdA = dragweights[0]*CdAfront + dragweights[1]*CdAback + dragweights[2]*CdAtop + dragweights[3]*CdAleft + dragweights[3]*CdAright
-    ClA = liftWeights[0]*ClAfront + liftWeights[1]*ClAback + liftWeights[2]*ClAtop + liftWeights[3]*ClAleft + liftWeights[3]*ClAright
+    CdAs = [CdAfront, CdAback, CdAtop, CdAbottom, CdAleft, CdAright]
+    ClAs = [ClAfront, ClAback, ClAtop, ClAbottom, ClAleft, ClAright]  
+    """
+    aeros = [scan.oldAeroMethod for scan in (self.front, self.back, self.top, self.bottom, self.left, self.right)]
+    CdA = sum([aero[0]*w for aero, w in zip(aeros, dragweights)]) # dragweights[0]*CdAfront + dragweights[1]*CdAback + dragweights[2]*CdAtop + dragweights[3]*CdAbottom + dragweights[4]*CdAleft + dragweights[5]*CdAright
+    ClA = sum([aero[1]*w for aero, w in zip(aeros, liftweights)]) # liftWeights[0]*ClAfront + liftWeights[1]*ClAback + liftWeights[2]*ClAtop + liftweights[3]*ClAbottom liftWeights[4]*ClAleft + liftWeights[5]*ClAright
     Cd = CdA / projectedArea
     Cl = ClA / projectedArea
     return Cd, Cl, projectedArea, CdA, ClA
