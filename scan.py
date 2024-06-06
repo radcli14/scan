@@ -93,7 +93,7 @@ class SingleDirectionScan:
   
   @property
   def values(self):
-    if self._values == None:
+    if self._values is None:
       self._values = self.worksheet.get_all_values()
     return self._values
 
@@ -131,7 +131,7 @@ class SingleDirectionScan:
 
   @property
   def data(self):
-    if self._data == None:
+    if self._data is None:
       self._data = np.array(self.values[6:]).astype("float")
     return self._data
 
