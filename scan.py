@@ -88,11 +88,11 @@ class Scan:
     dragweights = [1.334023e+00,	3.789517e-01,	5.690723e-20,	2.949861e+00,	2.949861e+00]
     liftWeights = {2.283034e-18, 3.149287e-22, 2.154557e+00, 2.500000e+00, 2.500000e+00}
     projectedArea = self.front.projectedArea
-    _, _, CdAfront, ClAfront = self.front.aeroOldMethod
-    _, _, CdAback, ClAback = self.back.aeroOldMethod
-    _, _, CdAtop, ClAtop = self.top.aeroOldMethod
-    _, _, CdAleft, ClAleft = self.left.aeroOldMethod
-    _, _, CdAright, ClAright = self.right.aeroOldMethod
+    CdAfront, ClAfront = self.front.aeroOldMethod
+    CdAback, ClAback = self.back.aeroOldMethod
+    CdAtop, ClAtop = self.top.aeroOldMethod
+    CdAleft, ClAleft = self.left.aeroOldMethod
+    CdAright, ClAright = self.right.aeroOldMethod
     CdA = dragweights[0]*CdAfront + dragweights[1]*CdAback + dragweights[2]*CdAtop + dragweights[3]*CdAleft + dragweights[3]*CdAright
     ClA = liftWeights[0]*ClAfront + liftWeights[1]*ClAback + liftWeights[2]*ClAtop + liftWeights[3]*ClAleft + liftWeights[3]*ClAright
     Cd = CdA / projectedArea
@@ -191,4 +191,4 @@ class SingleDirectionScan:
     inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(r_dot_n)
     CdA = Cp * inclinedSurfaceArea * (-r_dot_n)
     ClA = Cp * inclinedSurfaceArea * (-self.normalUp)
-    return r_dot_n, Cp, CdA, ClA
+    return CdA.sum(), ClA.sum()
