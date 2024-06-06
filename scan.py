@@ -112,6 +112,14 @@ class SingleDirectionScan:
     return np.array(self.values[3][1:4])
 
   @property
+  def up(self):
+    return np.array([0, 1, 0])
+
+  @property
+  def right(self):
+    return np.cross(self.forward, self.up)
+
+  @property
   def ray(self):
     return np.array(self.values[4][1:4])
 
@@ -132,3 +140,15 @@ class SingleDirectionScan:
   @property
   def normals(self):
     return self.data[:, 3:]
+
+  @property
+  def normalForward(self):
+    return self.normals @ self.forward.transpose()
+
+  @property
+  def normalUp(self):
+    return self.normals @ self.up.transpose()
+
+  @property
+  def normalRight(self):
+    return self.normals @ self.right.transpose()
