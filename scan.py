@@ -109,7 +109,7 @@ class SingleDirectionScan:
 
   @property
   def forward(self):
-    return np.array(self.values[3][1:4])
+    return np.array([float(x) for x in self.values[3][1:4]])
 
   @property
   def up(self):
@@ -121,7 +121,7 @@ class SingleDirectionScan:
 
   @property
   def ray(self):
-    return np.array(self.values[4][1:4])
+    return np.array([float(x) for x in self.values[4][1:4]])
 
   @property
   def header(self):
