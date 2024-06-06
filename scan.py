@@ -99,7 +99,7 @@ class Scan:
     CdAs = [CdAfront, CdAback, CdAtop, CdAbottom, CdAleft, CdAright]
     ClAs = [ClAfront, ClAback, ClAtop, ClAbottom, ClAleft, ClAright]  
     """
-    aeros = [scan.oldAeroMethod for scan in (self.front, self.back, self.top, self.bottom, self.left, self.right)]
+    aeros = [scan.aeroOldMethod for scan in (self.front, self.back, self.top, self.bottom, self.left, self.right)]
     CdA = sum([aero[0]*w for aero, w in zip(aeros, dragWeights)]) # dragweights[0]*CdAfront + dragweights[1]*CdAback + dragweights[2]*CdAtop + dragweights[3]*CdAbottom + dragweights[4]*CdAleft + dragweights[5]*CdAright
     ClA = sum([aero[1]*w for aero, w in zip(aeros, liftWeights)]) # liftWeights[0]*ClAfront + liftWeights[1]*ClAback + liftWeights[2]*ClAtop + liftweights[3]*ClAbottom liftWeights[4]*ClAleft + liftWeights[5]*ClAright
     Cd = CdA / projectedArea
