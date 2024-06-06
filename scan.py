@@ -88,7 +88,7 @@ class Scan:
                     dragweights=[1.334023e+00,	3.789517e-01,	5.690723e-20, 0.0,	2.949861e+00,	2.949861e+00],
                     liftWeights=[2.283034e-18, 3.149287e-22, 2.154557e+00, 0.0, 2.500000e+00, 2.500000e+00]):
     projectedArea = self.front.projectedArea
-                     """
+    """
     CdAfront, ClAfront = self.front.aeroOldMethod
     CdAback, ClAback = self.back.aeroOldMethod
     CdAtop, ClAtop = self.top.aeroOldMethod
