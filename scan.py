@@ -9,8 +9,9 @@ creds, _ = default()
 gc = gspread.authorize(creds)
 
 class Scan:
-  def __init__(self, fileName=""):
+  def __init__(self, fileName="", cellBlock=0.25):
     self.fileName = fileName
+    self.cellBlock = cellBlock
 
   def __repr__(self):
     return f'Scan(fileName="{self.fileName}")'
@@ -84,8 +85,9 @@ class Scan:
 
 
 class SingleDirectionScan:
-  def __init__(self, worksheet):
+  def __init__(self, worksheet, cellBlock=0.25):
     self.worksheet = worksheet
+    self.cellBlock = cellBlock
     self._values = None
     self._data = None
   
@@ -156,3 +158,16 @@ class SingleDirectionScan:
   @property
   def normalRight(self):
     return self.normals @ self.right.transpose()
+
+  @property
+  def projectedAreaPerPixel(self):
+    return self.cellBlock * self.cellBlock
+  
+  @property
+  def getScanDirectionAeroOldMethod(scanDirection):
+    r_dot_n = -self.normalForward  # Negative because this is the wind vector
+    Cp = 1 - (1 - np.abs(r_dot_n))**2
+    inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(r_dot_n)
+    CdA = Cp * inclinedSurfaceArea * (-r_dot_n)
+    ClA = Cp * inclinedSurfaceArea * (-self.normalUp)
+    return r_dot_n, Cp, CdA, ClA
