@@ -83,6 +83,22 @@ class Scan:
   def right(self):
     return SingleDirectionScan(self.data.worksheet("Right"))
 
+  @property
+  def aeroOldMethod(self):
+    dragweights = [1.334023e+00,	3.789517e-01,	5.690723e-20,	2.949861e+00,	2.949861e+00]
+    liftWeights = {2.283034e-18, 3.149287e-22, 2.154557e+00, 2.500000e+00, 2.500000e+00}
+    projectedArea = self.front.projectedArea
+    _, _, CdAfront, ClAfront = self.front.aeroOldMethod
+    _, _, CdAback, ClAback = self.back.aeroOldMethod
+    _, _, CdAtop, ClAtop = self.top.aeroOldMethod
+    _, _, CdAleft, ClAleft = self.left.aeroOldMethod
+    _, _, CdAright, ClAright = self.right.aeroOldMethod
+    CdA = dragweights[0]*CdAfront + dragweights[1]*CdAback + dragweights[2]*CdAtop + dragweights[3]*CdAleft + dragweights[3]*CdAright
+    ClA = liftWeights[0]*ClAfront + liftWeights[1]*ClAback + liftWeights[2]*ClAtop + liftWeights[3]*ClAleft + liftWeights[3]*ClAright
+    Cd = CdA / projectedArea
+    Cl = ClA / projectedArea
+    return Cd, Cl, projectedArea, CdA, ClA
+
 
 class SingleDirectionScan:
   def __init__(self, worksheet, cellBlock=0.25):
@@ -162,9 +178,13 @@ class SingleDirectionScan:
   @property
   def projectedAreaPerPixel(self):
     return self.cellBlock * self.cellBlock
+
+  @property
+  def projectedArea(self):
+    return self.count * self.projectedAreaPerPixel
   
   @property
-  def getScanDirectionAeroOldMethod(scanDirection):
+  def aeroOldMethod(self):
     r_dot_n = -self.normalForward  # Negative because this is the wind vector
     Cp = 1 - (1 - np.abs(r_dot_n))**2
     inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(r_dot_n)
