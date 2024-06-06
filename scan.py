@@ -111,6 +111,7 @@ class SingleDirectionScan:
   def values(self):
     if self._values is None:
       self._values = self.worksheet.get_all_values()
+      self._values = np.where(self._values=='', '0', self._values)
     return self._values
 
   @property
