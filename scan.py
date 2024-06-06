@@ -83,22 +83,11 @@ class Scan:
   def right(self):
     return SingleDirectionScan(self.data.worksheet("Right"))
 
-  @property
-  def aeroOldMethod(self, 
-      dragWeights=[1.334023e+00, 3.789517e-01, 5.690723e-20, 0.0,	2.949861e+00, 2.949861e+00],
-      liftWeights=[2.283034e-18, 3.149287e-22, 2.154557e+00, 0.0, 2.500000e+00, 2.500000e+00]
+  def aeroOldMethod(self,
+      dragWeights=(1.334023e+00, 3.789517e-01, 5.690723e-20, 0.0, 2.949861e+00, 2.949861e+00),
+      liftWeights=(2.283034e-18, 3.149287e-22, 2.154557e+00, 0.0, 2.500000e+00, 2.500000e+00)
     ):
     projectedArea = self.front.projectedArea
-    """
-    CdAfront, ClAfront = self.front.aeroOldMethod
-    CdAback, ClAback = self.back.aeroOldMethod
-    CdAtop, ClAtop = self.top.aeroOldMethod
-    CdAbottom, ClAbottom = self.bottom.aeroOldMethod               
-    CdAleft, ClAleft = self.left.aeroOldMethod
-    CdAright, ClAright = self.right.aeroOldMethod
-    CdAs = [CdAfront, CdAback, CdAtop, CdAbottom, CdAleft, CdAright]
-    ClAs = [ClAfront, ClAback, ClAtop, ClAbottom, ClAleft, ClAright]  
-    """
     aeros = [scan.aeroOldMethod for scan in (self.front, self.back, self.top, self.bottom, self.left, self.right)]
     CdA = sum([aero[0]*w for aero, w in zip(aeros, dragWeights)]) # dragweights[0]*CdAfront + dragweights[1]*CdAback + dragweights[2]*CdAtop + dragweights[3]*CdAbottom + dragweights[4]*CdAleft + dragweights[5]*CdAright
     ClA = sum([aero[1]*w for aero, w in zip(aeros, liftWeights)]) # liftWeights[0]*ClAfront + liftWeights[1]*ClAback + liftWeights[2]*ClAtop + liftweights[3]*ClAbottom liftWeights[4]*ClAleft + liftWeights[5]*ClAright
@@ -118,7 +107,6 @@ class SingleDirectionScan:
   def values(self):
     if self._values is None:
       self._values = self.worksheet.get_all_values()
-      self._values = np.where(self._values=='', '0', self._values)
     return self._values
 
   @property
@@ -156,7 +144,10 @@ class SingleDirectionScan:
   @property
   def data(self):
     if self._data is None:
-      self._data = np.array(self.values[6:]).astype("float")
+      data = np.array(self.values[6:])
+      data = np.where(data == '', 0, data)
+      data = np.where(data == '-', 0, data)
+      self._data = data.astype("float")
     return self._data
 
   @property
