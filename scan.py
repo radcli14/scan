@@ -51,37 +51,69 @@ class Scan:
     _, scanFile = os.path.split(self.fileName)
     return scanFile
 
+  _data = None
+
   @property
   def data(self):
-    return gc.open(self.scanFile.replace(".gsheet", ""))
+    if self._data is None:
+      self._data = gc.open(self.scanFile.replace(".gsheet", ""))
+    return self._data
+
+  _sheets = None
 
   @property
   def sheets(self):
-    return self.data.worksheets()
+    if self._sheets is None:
+      self._sheets = self.data.worksheets()
+    return self._sheets
+
+  _front = None
 
   @property
   def front(self):
-    return SingleDirectionScan(self.data.worksheet("Front"))
+    if self._front is None:
+      self._front = SingleDirectionScan(self.data.worksheet("Front"))
+    return self._front
+
+  _back = None
 
   @property
   def back(self):
-    return SingleDirectionScan(self.data.worksheet("Back"))
+    if self._back is None:
+      self._back = SingleDirectionScan(self.data.worksheet("Back"))
+    return self._back
+
+  _top = None
 
   @property
   def top(self):
-    return SingleDirectionScan(self.data.worksheet("Top"))
+    if self._top is None:
+      self._top = SingleDirectionScan(self.data.worksheet("Top"))
+    return self._top
+
+  _bottom = None
 
   @property
   def bottom(self):
-    return SingleDirectionScan(self.data.worksheet("Bottom"))
+    if self._bottom is None:
+      self._bottom = SingleDirectionScan(self.data.worksheet("Bottom"))
+    return self._bottom
+
+  _left = None
 
   @property
   def left(self):
-    return SingleDirectionScan(self.data.worksheet("Left"))
+    if self._left = None:
+      self._left = SingleDirectionScan(self.data.worksheet("Left"))
+    return self._left
+
+  _right = None
 
   @property
   def right(self):
-    return SingleDirectionScan(self.data.worksheet("Right"))
+    if self._right is None:
+      self._right = SingleDirectionScan(self.data.worksheet("Right"))
+    return self._right
 
   def aeroOldMethod(self,
       dragWeights=(1.334023e+00, 3.789517e-01, 5.690723e-20, 0.0, 2.949861e+00, 2.949861e+00),
@@ -190,3 +222,11 @@ class SingleDirectionScan:
     CdA = Cp * inclinedSurfaceArea * (-r_dot_n)
     ClA = Cp * inclinedSurfaceArea * (-self.normalUp)
     return CdA.sum(), ClA.sum()
+
+  def aeroNewMethod(self, w):
+    x = [np.ones(self.count), self.normalForward, self.normalForward**2, self.normalUp, self.normalUp**2, self.normalRight**2]
+    Cp = sum([xk*wk for xk, wk in zip(x, w)])
+    inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(self.normalForward)**(-1)
+    CdA = Cp * inclinedSurfaceArea * (self.normalForward)
+    ClA = Cp * inclinedSurfaceArea * (-self.normalUp)
+    return CdA.sum(), ClA.sum(), self.projectedArea
