@@ -103,7 +103,7 @@ class Scan:
 
   @property
   def left(self):
-    if self._left = None:
+    if self._left is None:
       self._left = SingleDirectionScan(self.data.worksheet("Left"))
     return self._left
 
@@ -227,6 +227,6 @@ class SingleDirectionScan:
     x = [np.ones(self.count), self.normalForward, self.normalForward**2, self.normalUp, self.normalUp**2, self.normalRight**2]
     Cp = sum([xk*wk for xk, wk in zip(x, w)])
     inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(self.normalForward)**(-1)
-    CdA = Cp * inclinedSurfaceArea * (self.normalForward)
+    CdA = Cp * inclinedSurfaceArea * (-self.normalForward)
     ClA = Cp * inclinedSurfaceArea * (-self.normalUp)
     return CdA.sum(), ClA.sum(), self.projectedArea
