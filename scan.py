@@ -8,6 +8,12 @@ auth.authenticate_user()
 creds, _ = default()
 gc = gspread.authorize(creds)
 
+# Replace nans and infs with zeros
+def fix_bad(n):
+  for b in (np.nan, np.inf, -np.inf):
+    n = np.where(n == b, 0, n)
+  return n
+
 class Scan:
   def __init__(self, fileName="", cellBlock=0.25):
     self.fileName = fileName
@@ -121,11 +127,27 @@ class Scan:
     ):
     projectedArea = self.front.projectedArea
     aeros = [scan.aeroOldMethod for scan in (self.front, self.back, self.top, self.bottom, self.left, self.right)]
-    CdA = sum([aero[0]*w for aero, w in zip(aeros, dragWeights)]) # dragweights[0]*CdAfront + dragweights[1]*CdAback + dragweights[2]*CdAtop + dragweights[3]*CdAbottom + dragweights[4]*CdAleft + dragweights[5]*CdAright
-    ClA = sum([aero[1]*w for aero, w in zip(aeros, liftWeights)]) # liftWeights[0]*ClAfront + liftWeights[1]*ClAback + liftWeights[2]*ClAtop + liftweights[3]*ClAbottom liftWeights[4]*ClAleft + liftWeights[5]*ClAright
-    Cd = CdA / projectedArea
-    Cl = ClA / projectedArea
-    return Cd, Cl, projectedArea, CdA, ClA
+    CdA = sum([aero.CdA*w for aero, w in zip(aeros, dragWeights)])
+    ClA = sum([aero.ClA*w for aero, w in zip(aeros, liftWeights)])
+    return AeroResult(A=projectedArea, CdA=CdA, ClA=ClA)
+
+
+class AeroResult:
+  A = None
+  Cd = None
+  Cl = None
+  CdA = None
+  ClA = None
+
+  def __init__(self, A=None, Cd=None, Cl=None, CdA=None, ClA=None):
+    self.A = A
+    self.Cd = Cd if Cd is not None else CdA / A
+    self.Cl = Cl if Cl is not None else ClA / A
+    self.CdA = CdA if CdA is not None else Cd * A
+    self.ClA = ClA if ClA is not None else Cl * A
+
+  def __repr__(self):
+    return f'AeroResult(A={self.A}, Cd={self.Cd}, Cl={self.Cl})'
 
 
 class SingleDirectionScan:
@@ -196,19 +218,23 @@ class SingleDirectionScan:
 
   @property
   def normalForward(self):
-    return self.normals @ self.forward.transpose()
+    u = self.normals @ self.forward.transpose()
+    return fix_bad(u)
 
   @property
   def normalUp(self):
-    return self.normals @ self.up.transpose()
+    v = self.normals @ self.up.transpose()
+    return fix_bad(v)
 
   @property
   def normalRight(self):
-    return self.normals @ self.right.transpose()
+    w = self.normals @ self.right.transpose()
+    return fix_bad(w)
 
   @property
   def normalRay(self):
-    return self.normals @ self.ray.transpose()
+    ray = self.normals @ self.ray.transpose()
+    return fix_bad(ray)
 
   @property
   def projectedAreaPerPixel(self):
@@ -221,7 +247,7 @@ class SingleDirectionScan:
   @property
   def inclinedSurfaceArea(self):
     inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(self.normalRay) ** (-1)
-    return np.where(inclinedSurfaceArea == np.nan, 0, inclinedSurfaceArea)
+    return fix_bad(inclinedSurfaceArea)
   
   @property
   def aeroOldMethod(self):
@@ -230,7 +256,7 @@ class SingleDirectionScan:
     inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(r_dot_n)
     CdA = Cp * inclinedSurfaceArea * (-r_dot_n)
     ClA = Cp * inclinedSurfaceArea * (-self.normalUp)
-    return CdA.sum(), ClA.sum()
+    return AeroResult(A=self.projectedArea, CdA=CdA.sum(), ClA=ClA.sum())
 
   def fcnCpSixTerms(self, a):
     u = self.normalForward
@@ -243,4 +269,4 @@ class SingleDirectionScan:
     CpA = self.fcnCpSixTerms(a) * self.inclinedSurfaceArea
     CdA = CpA * self.normalForward
     ClA = CpA * (-self.normalUp)
-    return CdA.sum(), ClA.sum(), self.projectedArea
+    return AeroResult(A=self.projectedArea, CdA=np.nansum(CdA), ClA=np.nansum(ClA))
