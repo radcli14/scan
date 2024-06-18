@@ -207,12 +207,21 @@ class SingleDirectionScan:
     return self.normals @ self.right.transpose()
 
   @property
+  def normalRay(self):
+    return self.normals @ self.ray.transpose()
+
+  @property
   def projectedAreaPerPixel(self):
     return self.cellBlock * self.cellBlock
 
   @property
   def projectedArea(self):
     return self.count * self.projectedAreaPerPixel
+
+  @property
+  def inclinedSurfaceArea(self):
+    inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(self.normalRay) ** (-1)
+    return np.where(inclinedSurfaceArea == np.nan, 0, inclinedSurfaceArea)
   
   @property
   def aeroOldMethod(self):
@@ -223,10 +232,15 @@ class SingleDirectionScan:
     ClA = Cp * inclinedSurfaceArea * (-self.normalUp)
     return CdA.sum(), ClA.sum()
 
-  def aeroNewMethod(self, w):
-    x = [np.ones(self.count), self.normalForward, self.normalForward**2, self.normalUp, self.normalUp**2, self.normalRight**2]
-    Cp = sum([xk*wk for xk, wk in zip(x, w)])
-    inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(self.normalForward)**(-1)
-    CdA = Cp * inclinedSurfaceArea * (-self.normalForward)
-    ClA = Cp * inclinedSurfaceArea * (-self.normalUp)
+  def fcnCpSixTerms(self, a):
+    u = self.normalForward
+    v = self.normalUp
+    w = self.normalRight
+    x = [np.ones(self.count), u, u**2, v, v**2, w**2]
+    return sum([xk*ak for xk, ak in zip(x, a)])
+
+  def aeroNewMethod(self, a):
+    CpA = self.fcnCpSixTerms(a) * self.inclinedSurfaceArea
+    CdA = CpA * self.normalForward
+    ClA = CpA * (-self.normalUp)
     return CdA.sum(), ClA.sum(), self.projectedArea
