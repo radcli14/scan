@@ -1,5 +1,6 @@
 import os
 import numpy as np
+from sympy import symbols, Matrix, lambdify
 import gspread
 from google.colab import auth
 from oauth2client.client import GoogleCredentials
@@ -8,11 +9,39 @@ auth.authenticate_user()
 creds, _ = default()
 gc = gspread.authorize(creds)
 
-# Replace nans and infs with zeros
+# Function to replace nans and infs with zeros
 def fix_bad(n):
   for b in (np.nan, np.inf, -np.inf):
     n = np.where(n == b, 0, n)
   return n
+
+# Get forms of the aero polynomials given varying numbers of coefficients
+"""
+- $u = \mathbf{n} \cdot \mathbf{f}$ where $\mathbf{n}$ is the normal vector, and $\mathbf{f}$ is the car's forward vector
+- $v = \mathbf{n} \cdot \mathbf{v}$ where $\mathbf{v}$ is the car's upward vector
+- $w = \mathbf{n} \cdot \mathbf{s}$ where $\mathbf{s}$ is the car's right vector
+
+- $b_0$: The amplitude of $C_p$ at a forward-facing normal $u$, where $u = 1$
+- $b_1$: The amplitude of $C_p$ at an aft-facing normal, where $u = -1$
+- $b_2$: The slope $\frac{\partial C_p}{\partial u}$ at a forward-facing normal
+- $b_3$: The amplitude of $C_p$ at a upward-facing normal, where $v = 1$
+- $b_4$: The amplitude of $C_p$ at an downward-facing normal, where $v = -1$
+- $b_5$: The amplitude of $C_p$ at a side-facing normal, where $w = \pm 1$
+"""
+b0, b1, b2, b3, b4, b5 = symbols("b0, b1, b2, b3, b4, b5 ")
+B = Matrix([b0, b1, b2, b3, b4, b5])
+C = Matrix([
+    [1, 1, 1, 0, 0, 0],
+    [1, -1, 1, 0, 0, 0],
+    [0, 1, 2, 0, 0, 0],
+    [1, 0, 0, 1, 1, 0],
+    [1, 0, 0, -1, 1, 0],
+    [1, 0, 0, 0, 0, 1]
+    ])
+aFcn3Pars = lambdify(list(B[:3, 0]), list(C[:3, :3].inv() * B[:3, 0]))
+aFcn5Pars = lambdify(list(B[:5, 0]), list(C[:5, :5].inv() * B[:5, 0]))
+aFcn6Pars = lambdify(list(B), list(C.inv() * B))
+# ---
 
 class Scan:
   def __init__(self, fileName="", cellBlock=0.25):
@@ -131,6 +160,42 @@ class Scan:
     ClA = sum([aero.ClA*w for aero, w in zip(aeros, liftWeights)])
     return AeroResult(A=projectedArea, CdA=CdA, ClA=ClA)
 
+  def frontBackAero(self, CpFwd=0, CpAft=0, CpSlopeFwd=0, CpUpward=0, CpDownward=0, CpSide=0):
+    """
+    Obtains the `AeroResult` given the scan data from the front and back, given the surface normal components
+    - $u = \mathbf{n} \cdot \mathbf{f}$ where $\mathbf{n}$ is the normal vector, and $\mathbf{f}$ is the car's forward vector
+    - $v = \mathbf{n} \cdot \mathbf{v}$ where $\mathbf{v}$ is the car's upward vector
+    - $w = \mathbf{n} \cdot \mathbf{s}$ where $\mathbf{s}$ is the car's right vector
+
+    :param CpFwd: $b_0$: The amplitude of $C_p$ at a forward-facing normal $u$, where $u = 1$
+    :param CpAft: $b_1$: The amplitude of $C_p$ at an aft-facing normal, where $u = -1$
+    :param CpSlopeFwd: $b_2$: The slope $\frac{\partial C_p}{\partial u}$ at a forward-facing normal
+    :param CpUpward: $b_3$: The amplitude of $C_p$ at a upward-facing normal, where $v = 1$
+    :param CpDownward: $b_4$: The amplitude of $C_p$ at an downward-facing normal, where $v = -1$
+    :param CpSide: $b_5$: The amplitude of $C_p$ at a side-facing normal, where $w = \pm 1$
+    :return: an `AeroResult` object
+    """
+    a = aFcn6Pars(CpFwd, CpAft, CpSlopeFwd, CpUpward, CpDownward, CpSide)
+    return self.front.aeroNewMethod(a) + self.back.aeroNewMethod(a)
+
+  def topBottomAero(self, CpFwd=0, CpAft=0, CpSlopeFwd=0, CpUpward=0, CpDownward=0, CpSide=0):
+    """
+    Obtains the `AeroResult` given the scan data from the front and back, given the surface normal components
+    """
+    a = aFcn6Pars(CpFwd, CpAft, CpSlopeFwd, CpUpward, CpDownward, CpSide)
+    top = self.top.aeroNewMethod(a)
+    top.updateArea(self.front.projectedArea)
+    return top + self.bottom.aeroNewMethod(a)
+
+  def leftRightAero(self, CpFwd=0, CpAft=0, CpSlopeFwd=0, CpUpward=0, CpDownward=0, CpSide=0):
+    """
+    Obtains the `AeroResult` given the scan data from the left and right, given the surface normal components
+    """
+    a = aFcn6Pars(CpFwd, CpAft, CpSlopeFwd, CpUpward, CpDownward, CpSide)
+    left = self.left.aeroNewMethod(a)
+    left.updateArea(self.front.projectedArea)
+    return left + self.right.aeroNewMethod(a)
+
 
 class AeroResult:
   A = None
@@ -148,6 +213,14 @@ class AeroResult:
 
   def __repr__(self):
     return f'AeroResult(A={self.A}, Cd={self.Cd}, Cl={self.Cl})'
+
+  def __add__(self, other):
+    return AeroResult(A=self.A, CdA=self.CdA + other.CdA, ClA=self.ClA + other.ClA)
+
+  def updateArea(self, newArea):
+    self.A = newArea
+    self.Cd = self.CdA / self.A
+    self.Cl = self.ClA / self.A
 
 
 class SingleDirectionScan:
