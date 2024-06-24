@@ -196,6 +196,25 @@ class Scan:
     left.updateArea(self.front.projectedArea)
     return left + self.right.aeroNewMethod(a)
 
+  def allDirectionAero(self, CpFwd=0, CpAft=0, CpSlopeFwd=0, CpUpward=0, CpDownward=0, CpSide=0,
+                       wDragFront=1, wDragBack=1, wDragTop=1, wDragBottom=1, wDragLeft=1, wDragRight=1,
+                       wLiftFront=1, wLiftBack=1, wLiftTop=1, wLiftBottom=1, wLiftLeft=1, wLiftRight=1):
+    """
+    Obtains the `AeroResult` given the scan data from the left and right, given the surface normal components
+    """
+    a = aFcn6Pars(CpFwd, CpAft, CpSlopeFwd, CpUpward, CpDownward, CpSide)
+    front = self.front.aeroNewMethod(a)
+    back = self.back.aeroNewMethod(a)
+    top = self.top.aeroNewMethod(a)
+    bottom = self.bottom.aeroNewMethod(a)
+    left = self.left.aeroNewMethod(a)
+    right = self.right.aeroNewMethod(a)
+    return AeroResult(
+      A = front.A,
+      CdA = wDragFront * front.CdA + wDragBack * back.CdA + wDragTop * top.CdA + wDragBottom * bottom.CdA + wDragLeft * left.CdA + wDragRight * right.CdA,
+      ClA = wLiftFront * front.ClA + wLiftBack * back.ClA + wLiftTop * top.ClA + wLiftBottom * bottom.ClA + wLiftLeft * left.ClA + wLiftRight * right.ClA
+    )
+
 
 class AeroResult:
   A = None
@@ -216,6 +235,12 @@ class AeroResult:
 
   def __add__(self, other):
     return AeroResult(A=self.A, CdA=self.CdA + other.CdA, ClA=self.ClA + other.ClA)
+
+  def __mul__(self, other):
+    return AeroResult(A=self.A, CdA=self.CdA * other, ClA=self.ClA * other)
+
+  def __rmul__(self, other):
+    return AeroResult(A=self.A, CdA=self.CdA * other, ClA=self.ClA * other)
 
   def updateArea(self, newArea):
     self.A = newArea
