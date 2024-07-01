@@ -48,6 +48,11 @@ class Scan:
     self.fileName = fileName
     self.cellBlock = cellBlock
 
+  @classmethod
+  def fromRoblox(cls, scanData):
+    # TODO: create this function so the data can be loaded directly from the raw scan data sent from a Roblox API call
+    return cls()
+
   def __repr__(self):
     return f'Scan(fileName="{self.fileName}")'
 
@@ -149,6 +154,20 @@ class Scan:
     if self._right is None:
       self._right = SingleDirectionScan(self.data.worksheet("Right"))
     return self._right
+
+  _boundingBox = None
+
+  @property
+  def boundingBox(self):
+    if self._boundingBox is None:
+      boxes = [scan.boundingBox for scan in (self.front, self.back, self.top, self.bottom, self.left, self.right)]
+      self._boundingBox = [[np.inf, -np.inf], [np.inf, -np.inf], [np.inf, -np.inf]]
+      for box in boxes:
+        for i in range(3):
+          self._boundingBox[i][0] = min(self._boundingBox[i][0], box[i][0])
+          self._boundingBox[i][1] = max(self._boundingBox[i][1], box[i][1])
+
+    return self._boundingBox
 
   def aeroOldMethod(self,
       dragWeights=(1.334023e+00, 3.789517e-01, 5.690723e-20, 0.0, 2.949861e+00, 2.949861e+00),
@@ -300,6 +319,7 @@ class SingleDirectionScan:
       data = np.where(data == '', 0, data)
       data = np.where(data == '-', 0, data)
       self._data = data.astype("float")
+      self._data = fix_bad(self._data)
     return self._data
 
   @property
@@ -308,7 +328,32 @@ class SingleDirectionScan:
   
   @property
   def hits(self):
-    return self.data[:, :3]
+    return self.data[:, :3] if self._hitReferencePoint is None else self.data[:, :3] - self._hitReferencePoint
+
+  _hitReferencePoint = None
+
+  @property
+  def hitReferencePoint(self):
+    return self._hitReferencePoint if self._hitReferencePoint is not None else np.array([0, 0, 0])
+
+  @hitReferencePoint.setter
+  def hitReferencePoint(self, value):
+    self._hitReferencePoint = value
+
+  @property
+  def hitForward(self):
+    x = self.hits @ self.forward.transpose()
+    return fix_bad(x)
+
+  @property
+  def hitUp(self):
+    y = self.hits @ self.up.transpose()
+    return fix_bad(y)
+
+  @property
+  def hitRight(self):
+    z = self.hits @ self.right.transpose()
+    return fix_bad(z)
 
   @property
   def normals(self):
@@ -346,7 +391,11 @@ class SingleDirectionScan:
   def inclinedSurfaceArea(self):
     inclinedSurfaceArea = self.projectedAreaPerPixel * np.abs(self.normalRay) ** (-1)
     return fix_bad(inclinedSurfaceArea)
-  
+
+  @property
+  def boundingBox(self):
+    return [(vec.min(), vec.max()) for vec in (self.hitForward, self.hitRight, self.hitUp)]
+
   @property
   def aeroOldMethod(self):
     r_dot_n = -self.normalForward  # Negative because this is the wind vector
@@ -365,6 +414,6 @@ class SingleDirectionScan:
 
   def aeroNewMethod(self, a):
     CpA = self.fcnCpSixTerms(a) * self.inclinedSurfaceArea
-    CdA = CpA * self.normalForward
+    CdA = CpA * (-self.normalForward)
     ClA = CpA * (-self.normalUp)
     return AeroResult(A=self.projectedArea, CdA=np.nansum(CdA), ClA=np.nansum(ClA))
