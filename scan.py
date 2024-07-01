@@ -169,6 +169,10 @@ class Scan:
 
     return self._boundingBox
 
+  @property
+  def boundingBoxCenter(self):
+    return [0.5 * (m[0] + m[1]) for m in self.boundingBox]
+
   def aeroOldMethod(self,
       dragWeights=(1.334023e+00, 3.789517e-01, 5.690723e-20, 0.0, 2.949861e+00, 2.949861e+00),
       liftWeights=(2.283034e-18, 3.149287e-22, 2.154557e+00, 0.0, 2.500000e+00, 2.500000e+00)
@@ -228,12 +232,27 @@ class Scan:
     bottom = self.bottom.aeroNewMethod(a)
     left = self.left.aeroNewMethod(a)
     right = self.right.aeroNewMethod(a)
-    return AeroResult(
-      A = front.A,
-      CdA = wDragFront * front.CdA + wDragBack * back.CdA + wDragTop * top.CdA + wDragBottom * bottom.CdA + wDragLeft * left.CdA + wDragRight * right.CdA,
-      ClA = wLiftFront * front.ClA + wLiftBack * back.ClA + wLiftTop * top.ClA + wLiftBottom * bottom.ClA + wLiftLeft * left.ClA + wLiftRight * right.ClA
-    )
 
+    # Form into lists to simplify generating the sums
+    aeros = [front, back, top, bottom, left, right]
+    dragWeights = [wDragFront, wDragBack, wDragTop, wDragBottom, wDragLeft, wDragRight]
+    liftWeights = [wLiftFront, wLiftBack, wLiftTop, wLiftBottom, wLiftLeft, wLiftRight]
+
+    # Sum up the drag and lift coefficients times areas
+    CdA = sum([w * aero.CdA for w, aero in zip(dragWeights, aeros)])
+    ClA = sum([w * aero.ClA for w, aero in zip(liftWeights, aeros)])
+
+    # Sum up the aerodynamic center, and calculate aero balance (percentage back from forward-most point to back-most)
+    aeroCenterFwd = sum([w * aero.ClA * aero.aeroCenter[0] for w, aero in zip(liftWeights, aeros)]) / ClA
+    aeroCenterRight = sum([w * aero.CdA * aero.aeroCenter[1] for w, aero in zip(dragWeights, aeros)]) / CdA
+    aeroCenterUp = sum([w * aero.CdA * aero.aeroCenter[2] for w, aero in zip(dragWeights, aeros)]) / CdA
+
+    # Set the aerodynamic center to be relative to a point at the front of the car, and the road surface
+    aeroCenter = [aeroCenterFwd - self.boundingBox[0][1], aeroCenterRight-self.boundingBoxCenter[1], aeroCenterUp-self.boundingBox[2][0]]
+    carLength = self.boundingBox[0][0] - self.boundingBox[0][1]
+    aeroBalance = aeroCenter[0] / carLength
+
+    return AeroResult(A = front.A, CdA = CdA, ClA = ClA, aeroCenter=aeroCenter, aeroBalance=aeroBalance)
 
 class AeroResult:
   A = None
@@ -241,19 +260,27 @@ class AeroResult:
   Cl = None
   CdA = None
   ClA = None
+  aeroCenter = None
 
-  def __init__(self, A=None, Cd=None, Cl=None, CdA=None, ClA=None):
+  def __init__(self, A=None, Cd=None, Cl=None, CdA=None, ClA=None, aeroCenter=None, aeroBalance=None):
     self.A = A
     self.Cd = Cd if Cd is not None else CdA / A
     self.Cl = Cl if Cl is not None else ClA / A
     self.CdA = CdA if CdA is not None else Cd * A
     self.ClA = ClA if ClA is not None else Cl * A
+    self.aeroCenter = aeroCenter
+    self.aeroBalance = aeroBalance
 
   def __repr__(self):
-    return f'AeroResult(A={self.A}, Cd={self.Cd}, Cl={self.Cl})'
+    return f'AeroResult(A={self.A}, Cd={self.Cd}, Cl={self.Cl}, aeroCenter={self.aeroCenter}, aeroBalance={self.aeroBalance})'
 
   def __add__(self, other):
-    return AeroResult(A=self.A, CdA=self.CdA + other.CdA, ClA=self.ClA + other.ClA)
+    ClA = self.ClA + other.ClA
+    if self.aeroCenter is not None and other.aeroCenter is not None:
+      aeroCenter = (self.ClA * self.aeroCenter + other.ClA * other.aeroCenter) / ClA
+    else:
+      aeroCenter = None
+    return AeroResult(A=self.A, CdA=self.CdA + other.CdA, ClA=ClA, aeroCenter=aeroCenter)
 
   def __mul__(self, other):
     return AeroResult(A=self.A, CdA=self.CdA * other, ClA=self.ClA * other)
@@ -397,6 +424,10 @@ class SingleDirectionScan:
     return [(vec.min(), vec.max()) for vec in (self.hitForward, self.hitRight, self.hitUp)]
 
   @property
+  def boundingBoxCenter(self):
+    return [0.5 * (m[0] + m[1]) for m in self.boundingBox]
+
+  @property
   def aeroOldMethod(self):
     r_dot_n = -self.normalForward  # Negative because this is the wind vector
     Cp = 1 - (1 - np.abs(r_dot_n))**2
@@ -414,6 +445,11 @@ class SingleDirectionScan:
 
   def aeroNewMethod(self, a):
     CpA = self.fcnCpSixTerms(a) * self.inclinedSurfaceArea
-    CdA = CpA * (-self.normalForward)
+    CdA = CpA * (self.normalForward)
     ClA = CpA * (-self.normalUp)
-    return AeroResult(A=self.projectedArea, CdA=np.nansum(CdA), ClA=np.nansum(ClA))
+    CdAsum = np.nansum(CdA)
+    ClAsum = np.nansum(ClA)
+    aeroCenterFwd = np.nansum(ClA * self.hitForward) / ClAsum if abs(ClAsum) > 0 else self.boundingBoxCenter[0]
+    aeroCenterRight = np.nansum(CdA * self.hitRight) / CdAsum if abs(CdAsum) > 0 else self.boundingBoxCenter[1]
+    aeroCenterUp = np.nansum(CdA * self.hitUp) / CdAsum if abs(CdAsum) > 0 else self.boundingBoxCenter[2]
+    return AeroResult(A=self.projectedArea, CdA=CdAsum, ClA=ClAsum, aeroCenter=np.array([aeroCenterFwd, aeroCenterRight, aeroCenterUp]))
